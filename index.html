@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Live HTML Preview with Export</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.9/codemirror.min.css" />
+  <style>
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      height: 100%;
+      font-family: "Segoe UI", sans-serif;
+      overflow: hidden;
+      background-color: #f5f5f5;
+    }
+    body {
+      display: flex;
+      flex-direction: column;
+    }
+    #menu {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      background: #1f1f1f;
+      padding: 12px;
+      color: white;
+      flex-shrink: 0;
+    }
+    button {
+      padding: 8px 18px;
+      background: #007bff;
+      color: white;
+      border: none;
+      border-radius: 20px;
+      cursor: pointer;
+      font-size: 15px;
+      transition: background 0.3s ease;
+    }
+    button:hover {
+      background: #0056b3;
+    }
+    #main {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+    }
+    .CodeMirror {
+      width: 50%;
+      height: 100%;
+      background: #eee;
+      font-size: 16px;
+      line-height: 1.5;
+    }
+    iframe {
+      width: 50%;
+      border: none;
+      height: 100%;
+      background: #ffffff;
+    }
+    #bottom {
+      background: #1f1f1f;
+      color: #ccc;
+      text-align: center;
+      padding: 10px 0;
+      font-size: 14px;
+      flex-shrink: 0;
+      position: sticky;
+      bottom: 0;
+      width: 100%;
+      box-shadow: 0 -1px 5px rgba(0,0,0,0.3);
+    }
+    #bottom a {
+      color: #4ea1ff;
+      text-decoration: none;
+      font-weight: bold;
+      margin-left: 4px;
+    }
+    #bottom a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="menu">
+    <button onclick="downloadHTML()">📤 Export</button>
+    <button onclick="clearHTML()">🧹 Clear</button>
+    <button onclick="fullPreview()">🖥️ Full Preview</button>
+  </div>
+
+  <div id="main">
+    <textarea id="htmlInput" placeholder="Type or paste your HTML code here..."></textarea>
+    <iframe id="output" sandbox="allow-scripts allow-same-origin"></iframe>
+  </div>
+
+  <div id="bottom">
+    Made by
+    <a href="https://linktr.ee/sanketdutta" target="_blank" rel="noopener noreferrer">Sanket</a>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.9/codemirror.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.9/mode/htmlmixed/htmlmixed.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.9/mode/javascript/javascript.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.9/mode/css/css.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.9/addon/edit/closetag.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.9/addon/edit/closebrackets.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.9/addon/lint/lint.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.9/addon/lint/html-lint.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jshint/2.13.4/jshint.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/csslint/1.0.5/csslint.min.js"></script>
+
+  <script>
+    const input = document.getElementById("htmlInput");
+    const output = document.getElementById("output");
+
+    function wrapHTML(content) {
+      return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Preview</title>
+</head>
+<body>
+${content}
+</body>
+</html>`;
+    }
+
+    function updatePreview() {
+      output.srcdoc = wrapHTML(editor.getValue());
+    }
+
+    function downloadHTML() {
+      const fullHTML = wrapHTML(editor.getValue());
+      const blob = new Blob([fullHTML], { type: "text/html" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "your-code.html";
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function clearHTML() {
+      editor.setValue("");
+      updatePreview();
+    }
+
+    function fullPreview() {
+      const fullHTML = wrapHTML(editor.getValue());
+      const url = URL.createObjectURL(new Blob([fullHTML], { type: "text/html" }));
+      window.open(url, "_blank");
+    }
+
+    // Initialize CodeMirror editor
+    const editor = CodeMirror.fromTextArea(input, {
+      mode: "htmlmixed",
+      lineNumbers: true,
+      autoCloseTags: true,
+      autoCloseBrackets: true,
+      lint: true,
+      gutters: ["CodeMirror-lint-markers", "CodeMirror-linenumbers"],
+      lineWrapping: true,
+      theme: "default",
+    });
+
+    // Manual placeholder implementation
+    function addPlaceholder(cm, text) {
+      const wrapper = cm.getWrapperElement();
+
+      const placeholderDiv = document.createElement("div");
+      placeholderDiv.style.position = "absolute";
+      placeholderDiv.style.zIndex = "5";
+      placeholderDiv.style.color = "#999";
+      placeholderDiv.style.pointerEvents = "none";
+      placeholderDiv.style.left = "50px";  // Shift right to avoid gutter overlap
+      placeholderDiv.style.top = "8px";
+      placeholderDiv.style.fontFamily = "monospace";
+      placeholderDiv.style.fontSize = "16px";
+      placeholderDiv.textContent = text;
+
+      wrapper.style.position = "relative";
+      wrapper.appendChild(placeholderDiv);
+
+      function update() {
+        if (cm.getValue().length === 0) {
+          placeholderDiv.style.display = "block";
+        } else {
+          placeholderDiv.style.display = "none";
+        }
+      }
+
+      cm.on("change", update);
+      update();
+    }
+
+    addPlaceholder(editor, "Type or paste your HTML code here...");
+
+    editor.on("change", updatePreview);
+
+    editor.setValue("");
+    updatePreview();
+  </script>
+
+</body>
+</html>
