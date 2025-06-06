@@ -35,6 +35,7 @@
       cursor: pointer;
       font-size: 15px;
       transition: background 0.3s ease;
+      user-select: none;
     }
     button:hover {
       background: #0056b3;
@@ -43,6 +44,7 @@
       flex: 1;
       display: flex;
       overflow: hidden;
+      position: relative;
     }
     .CodeMirror {
       width: 50%;
@@ -78,19 +80,28 @@
     #bottom a:hover {
       text-decoration: underline;
     }
+    /* Hidden file input */
+    #fileInput {
+      display: none;
+    }
   </style>
 </head>
 <body>
 
   <div id="menu">
+    <button onclick="document.getElementById('fileInput').click()">📂 Import</button>
     <button onclick="downloadHTML()">📤 Export</button>
+    <button onclick="undoEdit()">↩ Undo</button>
+    <button onclick="redoEdit()">↪ Redo</button>
+    <button onclick="copyHTML()">📋 Copy</button>
     <button onclick="clearHTML()">🧹 Clear</button>
-    <button onclick="fullPreview()">🖥️ Full Preview</button>
+    <button onclick="fullPreview()">🖥 Full Preview</button>
+    <input type="file" id="fileInput" accept=".html,.htm,.txt,.js,.css" />
   </div>
 
   <div id="main">
     <textarea id="htmlInput" placeholder="Type or paste your HTML code here..."></textarea>
-    <iframe id="output" sandbox="allow-scripts allow-same-origin"></iframe>
+    <iframe id="output"></iframe>
   </div>
 
   <div id="bottom">
@@ -112,6 +123,7 @@
   <script>
     const input = document.getElementById("htmlInput");
     const output = document.getElementById("output");
+    const fileInput = document.getElementById("fileInput");
 
     function wrapHTML(content) {
       return `<!DOCTYPE html>
@@ -152,6 +164,62 @@ ${content}
       window.open(url, "_blank");
     }
 
+    function copyHTML() {
+      const text = editor.getValue();
+
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(() => {
+          alert("HTML code copied to clipboard!");
+        }).catch(() => {
+          fallbackCopy(text);
+        });
+      } else {
+        fallbackCopy(text);
+      }
+
+      function fallbackCopy(text) {
+        const textarea = document.createElement("textarea");
+        textarea.value = text;
+        document.body.appendChild(textarea);
+        textarea.select();
+        try {
+          const success = document.execCommand("copy");
+          if (success) alert("HTML code copied to clipboard!");
+          else alert("Copy failed, please copy manually.");
+        } catch (err) {
+          alert("Copy failed, please copy manually.");
+        }
+        document.body.removeChild(textarea);
+      }
+    }
+
+    function undoEdit() {
+      editor.undo();
+    }
+
+    function redoEdit() {
+      editor.redo();
+    }
+
+    // Handle file import
+    fileInput.addEventListener('change', () => {
+      const file = fileInput.files[0];
+      if (!file) return;
+      const allowedTypes = ['text/html', 'text/plain', 'text/css', 'application/javascript', 'application/x-javascript', 'text/javascript'];
+      if (!allowedTypes.includes(file.type) && !file.name.match(/\.(html|htm|txt|js|css)$/i)) {
+        alert("Unsupported file type. Please select an HTML, JS, CSS, or TXT file.");
+        fileInput.value = "";
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = e => {
+        editor.setValue(e.target.result);
+        updatePreview();
+        fileInput.value = "";
+      };
+      reader.readAsText(file);
+    });
+
     // Initialize CodeMirror editor
     const editor = CodeMirror.fromTextArea(input, {
       mode: "htmlmixed",
@@ -162,9 +230,15 @@ ${content}
       gutters: ["CodeMirror-lint-markers", "CodeMirror-linenumbers"],
       lineWrapping: true,
       theme: "default",
+      extraKeys: {
+        "Ctrl-Z": cm => cm.undo(),
+        "Ctrl-Y": cm => cm.redo(),
+        "Cmd-Z": cm => cm.undo(),
+        "Cmd-Y": cm => cm.redo()
+      }
     });
 
-    // Manual placeholder implementation
+    // Placeholder manual implementation
     function addPlaceholder(cm, text) {
       const wrapper = cm.getWrapperElement();
 
@@ -173,7 +247,7 @@ ${content}
       placeholderDiv.style.zIndex = "5";
       placeholderDiv.style.color = "#999";
       placeholderDiv.style.pointerEvents = "none";
-      placeholderDiv.style.left = "50px";  // Shift right to avoid gutter overlap
+      placeholderDiv.style.left = "50px";  // avoid gutter
       placeholderDiv.style.top = "8px";
       placeholderDiv.style.fontFamily = "monospace";
       placeholderDiv.style.fontSize = "16px";
