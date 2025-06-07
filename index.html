@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
   <title>Live HTML Preview with Export</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.9/codemirror.min.css" />
   <style>
@@ -25,6 +26,7 @@
       padding: 12px;
       color: white;
       flex-shrink: 0;
+      flex-wrap: wrap;
     }
     button {
       padding: 8px 18px;
@@ -45,12 +47,13 @@
       display: flex;
       overflow: hidden;
       position: relative;
+      flex-direction: row;
     }
     .CodeMirror {
       width: 50%;
       height: 100%;
       background: #eee;
-      font-size: 16px;
+      font-size: 16px; /* Important to prevent zoom */
       line-height: 1.5;
     }
     iframe {
@@ -80,9 +83,18 @@
     #bottom a:hover {
       text-decoration: underline;
     }
-    /* Hidden file input */
     #fileInput {
       display: none;
+    }
+
+    @media (max-width: 768px) {
+      #main {
+        flex-direction: column;
+      }
+      .CodeMirror, iframe {
+        width: 100%;
+        height: 50%;
+      }
     }
   </style>
 </head>
@@ -201,7 +213,6 @@ ${content}
       editor.redo();
     }
 
-    // Handle file import
     fileInput.addEventListener('change', () => {
       const file = fileInput.files[0];
       if (!file) return;
@@ -220,7 +231,6 @@ ${content}
       reader.readAsText(file);
     });
 
-    // Initialize CodeMirror editor
     const editor = CodeMirror.fromTextArea(input, {
       mode: "htmlmixed",
       lineNumbers: true,
@@ -238,16 +248,14 @@ ${content}
       }
     });
 
-    // Placeholder manual implementation
     function addPlaceholder(cm, text) {
       const wrapper = cm.getWrapperElement();
-
       const placeholderDiv = document.createElement("div");
       placeholderDiv.style.position = "absolute";
       placeholderDiv.style.zIndex = "5";
       placeholderDiv.style.color = "#999";
       placeholderDiv.style.pointerEvents = "none";
-      placeholderDiv.style.left = "50px";  // avoid gutter
+      placeholderDiv.style.left = "50px";
       placeholderDiv.style.top = "8px";
       placeholderDiv.style.fontFamily = "monospace";
       placeholderDiv.style.fontSize = "16px";
@@ -257,11 +265,7 @@ ${content}
       wrapper.appendChild(placeholderDiv);
 
       function update() {
-        if (cm.getValue().length === 0) {
-          placeholderDiv.style.display = "block";
-        } else {
-          placeholderDiv.style.display = "none";
-        }
+        placeholderDiv.style.display = cm.getValue().length === 0 ? "block" : "none";
       }
 
       cm.on("change", update);
